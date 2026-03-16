@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal, InvalidOperation
 import re
 import unicodedata
 
@@ -26,6 +27,30 @@ def parse_date(value: str | None) -> date | None:
         return date.fromisoformat(value[:10])
     except ValueError:
         return None
+
+
+def parse_decimal_value(value: str | int | float | Decimal | None) -> Decimal:
+    if value is None:
+        return Decimal("0")
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+
+    text = str(value).strip()
+    if not text:
+        return Decimal("0")
+
+    # Supporta formatos "1.234,56" e "1234.56"
+    if "," in text and "." in text:
+        text = text.replace(".", "").replace(",", ".")
+    elif "," in text:
+        text = text.replace(",", ".")
+
+    try:
+        return Decimal(text)
+    except InvalidOperation:
+        return Decimal("0")
 
 
 def politician_key(

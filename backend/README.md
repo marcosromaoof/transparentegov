@@ -39,6 +39,17 @@ Para usar o banco da Vercel Postgres:
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_full.ps1 -DatabaseUrl "<DATABASE_URL_DA_VERCEL>"
 ```
 
+## Configuracao de fontes com credencial
+
+Para coletar dados reais de emendas no Portal da Transparencia, configure:
+
+```bash
+PORTAL_TRANSPARENCIA_API_KEY=<sua_chave_api>
+```
+
+A chave e obtida em:
+`https://www.portaldatransparencia.gov.br/api-de-dados/cadastrar-email`
+
 ## Validação da produção via proxy frontend
 
 ```powershell

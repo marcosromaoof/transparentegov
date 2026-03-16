@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     groq_base_url: str = "https://api.groq.com/openai/v1"
     google_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
 
+    portal_transparencia_base_url: str = "https://api.portaldatransparencia.gov.br"
+    portal_transparencia_api_key: str | None = None
+    portal_emendas_years_back: int = 2
+    portal_emendas_max_pages_per_year: int = 15
+
+    pncp_base_url: str = "https://pncp.gov.br/api/consulta/v1"
+    pncp_days_back: int = 120
+    pncp_max_pages: int = 30
+    pncp_page_size: int = 50
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
