@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import unicodedata
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -37,9 +38,12 @@ def list_cities(db: Session, state_id: int | None, query: str | None) -> list[Ci
     stmt = select(City)
     if state_id:
         stmt = stmt.where(City.state_id == state_id)
-    if query:
-        stmt = stmt.where(City.name.ilike(f"%{query}%"))
-    return db.scalars(stmt.order_by(City.name)).all()
+    rows = db.scalars(stmt.order_by(City.name)).all()
+    if not query:
+        return rows
+
+    needle = _normalize(query)
+    return [row for row in rows if needle in _normalize(row.name)]
 
 
 def get_city_profile(db: Session, city_id: int) -> dict:
@@ -118,4 +122,12 @@ def get_city_profile(db: Session, city_id: int) -> dict:
             "amendments": total_amendments or Decimal("0"),
         },
     }
+
+
+def _normalize(value: str | None) -> str:
+    if not value:
+        return ""
+    normalized = unicodedata.normalize("NFKD", value)
+    without_accents = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return without_accents.lower().strip()
 

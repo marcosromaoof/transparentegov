@@ -72,6 +72,53 @@ export type Investigation = {
   updated_at: string;
 };
 
+export type Politician = {
+  id: number;
+  name: string;
+  party: string | null;
+  position: string;
+  city_id: number | null;
+  state_id: number | null;
+  start_term: string | null;
+  end_term: string | null;
+};
+
+export type PoliticianProfile = {
+  politician: Politician;
+  state: State | null;
+  city: City | null;
+  contracts: {
+    id: number;
+    agency_id: number;
+    supplier: string;
+    value: string;
+    start_date: string | null;
+    end_date: string | null;
+    description: string | null;
+  }[];
+  spending: {
+    id: number;
+    agency_id: number;
+    year: number;
+    month: number;
+    category: string;
+    value: string;
+  }[];
+  amendments: {
+    id: number;
+    politician_id: number | null;
+    city_id: number;
+    value: string;
+    year: number;
+    description: string | null;
+  }[];
+  totals: {
+    contracts: string;
+    spending: string;
+    amendments: string;
+  };
+};
+
 export type ProviderConfig = {
   provider: "deepseek" | "google" | "openai" | "openrouter" | "groq";
   enabled: boolean;

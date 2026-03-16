@@ -39,6 +39,22 @@ export function CityProfileView({ cityId }: { cityId: number }) {
     ];
   }, [profile]);
 
+  const hasCityData = useMemo(() => {
+    if (!profile) {
+      return false;
+    }
+    return (
+      profile.public_agencies.length > 0 ||
+      profile.contracts.length > 0 ||
+      profile.spending.length > 0 ||
+      profile.hospitals.length > 0 ||
+      profile.schools.length > 0 ||
+      profile.police_units.length > 0 ||
+      Number(profile.totals.revenues) > 0 ||
+      Number(profile.totals.amendments) > 0
+    );
+  }, [profile]);
+
   if (loading) {
     return <div className="panel">Carregando perfil investigativo...</div>;
   }
@@ -81,6 +97,16 @@ export function CityProfileView({ cityId }: { cityId: number }) {
           </article>
         </div>
       </section>
+
+      {!hasCityData ? (
+        <section className="panel warn" style={{ marginTop: 16 }}>
+          <h3 className="section-title">Dados territoriais ainda em coleta</h3>
+          <p className="section-subtitle">
+            A cidade selecionada ainda nao possui contratos/gastos/receitas suficientes no banco.
+            Use a aba Datasets para sincronizar IBGE, TSE, Camara, Senado e demais fontes.
+          </p>
+        </section>
+      ) : null}
 
       <section className="panel" style={{ marginTop: 16 }}>
         <h3 className="section-title">Mapa Territorial</h3>

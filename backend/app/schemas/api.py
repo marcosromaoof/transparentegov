@@ -80,6 +80,16 @@ class PoliticianOut(ORMModel):
     end_term: date | None
 
 
+class PoliticianProfileOut(BaseModel):
+    politician: PoliticianOut
+    state: StateOut | None
+    city: CityOut | None
+    contracts: list[ContractOut]
+    spending: list[PublicSpendingOut]
+    amendments: list[ParliamentaryAmendmentOut]
+    totals: dict[str, Decimal]
+
+
 class PublicServantOut(ORMModel):
     id: int
     name: str
