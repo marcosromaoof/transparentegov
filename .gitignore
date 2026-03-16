@@ -28,3 +28,6 @@ frontend/*.tsbuildinfo
 
 # Infra
 infra/.env
+
+*.pyc
+**/__pycache__/
