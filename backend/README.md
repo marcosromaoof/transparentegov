@@ -50,6 +50,16 @@ PORTAL_TRANSPARENCIA_API_KEY=<sua_chave_api>
 A chave e obtida em:
 `https://www.portaldatransparencia.gov.br/api-de-dados/cadastrar-email`
 
+Para cobertura ampla de contratos/gastos por cidade no PNCP (primeiro ciclo), ajuste opcional:
+
+```bash
+PNCP_BACKFILL_DAYS=365
+PNCP_BACKFILL_MAX_PAGES=120
+PNCP_BACKFILL_MIN_CITIES=200
+```
+
+Com cobertura abaixo de `PNCP_BACKFILL_MIN_CITIES`, o coletor roda em modo backfill; depois disso, entra em modo incremental.
+
 ## Validação da produção via proxy frontend
 
 ```powershell

@@ -34,16 +34,21 @@ def list_states(db: Session, country_id: int | None) -> list[State]:
     return db.scalars(stmt.order_by(State.name)).all()
 
 
-def list_cities(db: Session, state_id: int | None, query: str | None) -> list[City]:
+def list_cities(db: Session, state_id: int | None, query: str | None, limit: int) -> list[City]:
     stmt = select(City)
     if state_id:
         stmt = stmt.where(City.state_id == state_id)
-    rows = db.scalars(stmt.order_by(City.name)).all()
-    if not query:
-        return rows
 
-    needle = _normalize(query)
-    return [row for row in rows if needle in _normalize(row.name)]
+    safe_limit = min(max(limit, 1), 2000)
+    if query:
+        stmt = stmt.where(City.name.ilike(f"%{query.strip()}%"))
+        rows = db.scalars(stmt.order_by(City.name).limit(safe_limit * 2)).all()
+        needle = _normalize(query)
+        if not needle:
+            return rows[:safe_limit]
+        return [row for row in rows if needle in _normalize(row.name)][:safe_limit]
+
+    return db.scalars(stmt.order_by(City.name).limit(safe_limit)).all()
 
 
 def get_city_profile(db: Session, city_id: int) -> dict:

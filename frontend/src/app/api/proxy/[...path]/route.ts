@@ -23,22 +23,31 @@ async function proxy(request: NextRequest, path: string[]) {
 
   const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
 
-  const response = await fetch(url, {
-    method: request.method,
-    headers,
-    body,
-    cache: "no-store"
-  });
+  try {
+    const response = await fetch(url, {
+      method: request.method,
+      headers,
+      body,
+      cache: "no-store"
+    });
 
-  const text = await response.text();
-  const responseHeaders = new Headers();
-  const responseContentType = response.headers.get("content-type") || "application/json";
-  responseHeaders.set("content-type", responseContentType);
+    const text = await response.text();
+    const responseHeaders = new Headers();
+    const responseContentType = response.headers.get("content-type") || "application/json";
+    responseHeaders.set("content-type", responseContentType);
 
-  return new NextResponse(text, {
-    status: response.status,
-    headers: responseHeaders
-  });
+    return new NextResponse(text, {
+      status: response.status,
+      headers: responseHeaders
+    });
+  } catch {
+    return NextResponse.json(
+      {
+        detail: "Proxy failed to reach backend service"
+      },
+      { status: 502 }
+    );
+  }
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {

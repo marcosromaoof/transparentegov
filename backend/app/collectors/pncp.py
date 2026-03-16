@@ -3,13 +3,22 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.collectors.base import CollectorResult
 from app.collectors.common import normalize_text, parse_date, parse_decimal_value
 from app.core.config import get_settings
-from app.models import City, Contract, DatasetSource, PublicAgency, PublicSpending
+from app.models import (
+    City,
+    Contract,
+    DatasetSource,
+    Hospital,
+    PoliceUnit,
+    PublicAgency,
+    PublicSpending,
+    School,
+)
 
 
 class PNCPCollector:
@@ -20,17 +29,26 @@ class PNCPCollector:
 
         source = db.scalar(select(DatasetSource).where(DatasetSource.source_key == self.source_key))
         today = date.today()
-        default_start = today - timedelta(days=max(settings.pncp_days_back, 1))
-        start_date = default_start
-        if source and source.last_run_at:
-            candidate = source.last_run_at.date() - timedelta(days=1)
-            start_date = max(default_start, candidate)
+        incremental_start = today - timedelta(days=max(settings.pncp_days_back, 1))
+        backfill_start = today - timedelta(days=max(settings.pncp_backfill_days, 30))
 
         page_size = min(max(settings.pncp_page_size, 10), 200)
-        max_pages = max(settings.pncp_max_pages, 1)
+        agency_city_coverage = db.scalar(select(func.count(func.distinct(PublicAgency.city_id)))) or 0
+        min_city_coverage = max(settings.pncp_backfill_min_cities, 1)
+        use_incremental_window = bool(
+            source and source.last_run_at and agency_city_coverage >= min_city_coverage
+        )
+
+        if use_incremental_window and source and source.last_run_at:
+            start_date = max(incremental_start, source.last_run_at.date() - timedelta(days=1))
+            max_pages = max(settings.pncp_max_pages, 1)
+        else:
+            start_date = backfill_start
+            max_pages = max(settings.pncp_backfill_max_pages, 1)
 
         city_by_ibge = self._load_city_by_ibge(db)
         agency_cache = self._load_agency_cache(db)
+        infrastructure_cache = self._load_infrastructure_cache(db)
         contract_keys_by_agency: dict[int, set[tuple[str, str, date | None, date | None, str]]] = {}
         spending_keys_by_agency: dict[int, set[tuple[int, int, str, str]]] = {}
 
@@ -50,7 +68,7 @@ class PNCPCollector:
                 response = client.get(f"{settings.pncp_base_url}/contratos", params=params)
                 response.raise_for_status()
                 payload = response.json()
-                rows = payload.get("data") or []
+                rows = self._extract_rows(payload)
                 if not rows:
                     break
 
@@ -61,6 +79,7 @@ class PNCPCollector:
                         row=row,
                         city_by_ibge=city_by_ibge,
                         agency_cache=agency_cache,
+                        infrastructure_cache=infrastructure_cache,
                         contract_keys_by_agency=contract_keys_by_agency,
                         spending_keys_by_agency=spending_keys_by_agency,
                     )
@@ -70,7 +89,7 @@ class PNCPCollector:
                         db.flush()
                         inserted_counter = 0
 
-                total_pages = int(payload.get("totalPaginas") or 0)
+                total_pages = self._extract_total_pages(payload)
                 if total_pages and page >= total_pages:
                     break
 
@@ -84,6 +103,7 @@ class PNCPCollector:
         row: dict,
         city_by_ibge: dict[str, City],
         agency_cache: dict[tuple[int, str], PublicAgency],
+        infrastructure_cache: set[tuple[str, int, str]],
         contract_keys_by_agency: dict[int, set[tuple[str, str, date | None, date | None, str]]],
         spending_keys_by_agency: dict[int, set[tuple[int, int, str, str]]],
     ) -> tuple[int, int]:
@@ -102,17 +122,28 @@ class PNCPCollector:
         agency_key = (city.id, normalize_text(agency_name))
         agency = agency_cache.get(agency_key)
         inserted_rows = 0
+        agency_type = self._resolve_agency_type(row)
         if not agency:
             agency = PublicAgency(
                 city_id=city.id,
                 name=agency_name[:255],
-                type=self._resolve_agency_type(row),
+                type=agency_type,
                 address=self._build_address(unidade),
             )
             db.add(agency)
             db.flush()
             agency_cache[agency_key] = agency
             inserted_rows += 1
+        else:
+            agency_type = agency.type
+
+        inserted_rows += self._ensure_infrastructure_records(
+            db,
+            city=city,
+            agency=agency,
+            agency_type=agency_type,
+            infrastructure_cache=infrastructure_cache,
+        )
 
         control_code = str(
             row.get("numeroControlePNCP") or row.get("numeroControlePncpCompra") or row.get("numeroContratoEmpenho") or ""
@@ -204,6 +235,87 @@ class PNCPCollector:
     def _load_agency_cache(self, db: Session) -> dict[tuple[int, str], PublicAgency]:
         rows = db.scalars(select(PublicAgency)).all()
         return {(row.city_id, normalize_text(row.name)): row for row in rows}
+
+    def _load_infrastructure_cache(self, db: Session) -> set[tuple[str, int, str]]:
+        cache: set[tuple[str, int, str]] = set()
+        for row in db.scalars(select(Hospital)).all():
+            cache.add(("hospital", row.city_id, normalize_text(row.name)))
+        for row in db.scalars(select(School)).all():
+            cache.add(("school", row.city_id, normalize_text(row.name)))
+        for row in db.scalars(select(PoliceUnit)).all():
+            cache.add(("police_station", row.city_id, normalize_text(row.name)))
+        return cache
+
+    def _ensure_infrastructure_records(
+        self,
+        db: Session,
+        *,
+        city: City,
+        agency: PublicAgency,
+        agency_type: str,
+        infrastructure_cache: set[tuple[str, int, str]],
+    ) -> int:
+        normalized_name = normalize_text(agency.name)
+        if not normalized_name:
+            return 0
+
+        if agency_type == "hospital":
+            cache_key = ("hospital", city.id, normalized_name)
+            if cache_key in infrastructure_cache:
+                return 0
+            db.add(Hospital(city_id=city.id, name=agency.name[:255], address=agency.address, public=True))
+            infrastructure_cache.add(cache_key)
+            return 1
+
+        if agency_type == "school":
+            cache_key = ("school", city.id, normalized_name)
+            if cache_key in infrastructure_cache:
+                return 0
+            db.add(School(city_id=city.id, name=agency.name[:255], type="publica", address=agency.address))
+            infrastructure_cache.add(cache_key)
+            return 1
+
+        if agency_type == "police_station":
+            cache_key = ("police_station", city.id, normalized_name)
+            if cache_key in infrastructure_cache:
+                return 0
+            db.add(
+                PoliceUnit(
+                    city_id=city.id,
+                    name=agency.name[:255],
+                    address=agency.address,
+                    type="police_station",
+                )
+            )
+            infrastructure_cache.add(cache_key)
+            return 1
+
+        return 0
+
+    def _extract_rows(self, payload: object) -> list[dict]:
+        if isinstance(payload, list):
+            return [row for row in payload if isinstance(row, dict)]
+        if not isinstance(payload, dict):
+            return []
+        rows = (
+            payload.get("data")
+            or payload.get("dados")
+            or payload.get("items")
+            or payload.get("resultados")
+            or []
+        )
+        if not isinstance(rows, list):
+            return []
+        return [row for row in rows if isinstance(row, dict)]
+
+    def _extract_total_pages(self, payload: object) -> int:
+        if not isinstance(payload, dict):
+            return 0
+        raw_value = payload.get("totalPaginas") or payload.get("total_paginas") or payload.get("totalPages")
+        try:
+            return int(raw_value or 0)
+        except (TypeError, ValueError):
+            return 0
 
     def _resolve_agency_type(self, row: dict) -> str:
         category = normalize_text((row.get("categoriaProcesso") or {}).get("nome"))

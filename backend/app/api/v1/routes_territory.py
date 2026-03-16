@@ -27,8 +27,9 @@ def get_cities(
     db: DBSession,
     state_id: int | None = Query(default=None),
     query: str | None = Query(default=None),
+    limit: int = Query(default=2000, ge=1, le=2000),
 ) -> list[CityOut]:
-    return [CityOut.model_validate(item) for item in list_cities(db, state_id, query)]
+    return [CityOut.model_validate(item) for item in list_cities(db, state_id, query, limit)]
 
 
 @router.get("/cities/{city_id}/profile", response_model=CityProfileOut)
