@@ -1,0 +1,33 @@
+{
+  "name": "transparentegov-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ag-grid-community": "^32.3.2",
+    "ag-grid-react": "^32.3.2",
+    "cytoscape": "^3.31.2",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.544.0",
+    "maplibre-gl": "^5.8.1",
+    "next": "15.3.1",
+    "react": "19.1.0",
+    "react-cytoscapejs": "^2.0.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "eslint": "^9.20.0",
+    "eslint-config-next": "15.3.1",
+    "typescript": "^5.8.2"
+  }
+}
+
