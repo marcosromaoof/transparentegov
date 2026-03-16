@@ -45,6 +45,7 @@ Para coletar dados reais de emendas no Portal da Transparencia, configure:
 
 ```bash
 PORTAL_TRANSPARENCIA_API_KEY=<sua_chave_api>
+PORTAL_EMENDAS_YEARS_BACK=4
 ```
 
 A chave e obtida em:

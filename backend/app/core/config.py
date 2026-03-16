@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     portal_transparencia_base_url: str = "https://api.portaldatransparencia.gov.br"
     portal_transparencia_api_key: str | None = None
-    portal_emendas_years_back: int = 2
+    portal_emendas_years_back: int = 4
     portal_emendas_max_pages_per_year: int = 15
 
     pncp_base_url: str = "https://pncp.gov.br/api/consulta/v1"
