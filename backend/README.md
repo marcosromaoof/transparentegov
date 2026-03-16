@@ -56,6 +56,7 @@ Para cobertura ampla de contratos/gastos por cidade no PNCP (primeiro ciclo), aj
 PNCP_BACKFILL_DAYS=365
 PNCP_BACKFILL_MAX_PAGES=120
 PNCP_BACKFILL_MIN_CITIES=200
+PNCP_MAX_RUNTIME_SECONDS=240
 ```
 
 Com cobertura abaixo de `PNCP_BACKFILL_MIN_CITIES`, o coletor roda em modo backfill; depois disso, entra em modo incremental.

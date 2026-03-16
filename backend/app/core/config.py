@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     pncp_backfill_days: int = 365
     pncp_backfill_max_pages: int = 120
     pncp_backfill_min_cities: int = 200
+    pncp_max_runtime_seconds: int = 240
 
     @property
     def cors_origins_list(self) -> list[str]:

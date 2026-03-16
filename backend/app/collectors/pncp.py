@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+import time
 
 import httpx
 from sqlalchemy import func, select
@@ -55,10 +56,14 @@ class PNCPCollector:
         fetched = 0
         saved = 0
         inserted_counter = 0
+        started_at = time.monotonic()
+        runtime_budget = max(settings.pncp_max_runtime_seconds, 30)
 
         timeout = httpx.Timeout(timeout=45.0)
         with httpx.Client(timeout=timeout) as client:
             for page in range(1, max_pages + 1):
+                if time.monotonic() - started_at >= runtime_budget:
+                    break
                 params = {
                     "dataInicial": start_date.strftime("%Y%m%d"),
                     "dataFinal": today.strftime("%Y%m%d"),

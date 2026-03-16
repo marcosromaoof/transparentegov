@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,6 +46,7 @@ def run_collector(db: Session, source_key: str) -> CollectorRun:
     if not collector:
         raise HTTPException(status_code=404, detail="Collector implementation not found")
 
+    _close_stale_runs(db, source)
     run = start_run(db, source)
     try:
         result = collector.run(db)
@@ -78,4 +81,30 @@ def list_runs(db: Session, source_key: str | None = None) -> list[CollectorRun]:
             return []
         stmt = stmt.where(CollectorRun.dataset_source_id == source.id)
     return db.scalars(stmt).all()
+
+
+def _close_stale_runs(db: Session, source: DatasetSource) -> None:
+    stale_runs = db.scalars(
+        select(CollectorRun).where(
+            CollectorRun.dataset_source_id == source.id,
+            CollectorRun.status == "running",
+            CollectorRun.finished_at.is_(None),
+        )
+    ).all()
+    if not stale_runs:
+        return
+
+    now = datetime.now(timezone.utc)
+    for stale in stale_runs:
+        stale.status = "error"
+        stale.finished_at = now
+        stale.error_message = "Collector run interrupted before completion"
+        stale.records_fetched = stale.records_fetched or 0
+        stale.records_saved = stale.records_saved or 0
+        db.add(stale)
+
+    source.last_run_at = now
+    source.last_status = "error"
+    db.add(source)
+    db.commit()
 
