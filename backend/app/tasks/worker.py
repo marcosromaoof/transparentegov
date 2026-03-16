@@ -28,6 +28,16 @@ celery_app.conf.update(
             "schedule": 86400,
             "args": ("ibge",),
         },
+        "run-senado-daily": {
+            "task": "app.tasks.worker.run_collector_task",
+            "schedule": 86400,
+            "args": ("senado",),
+        },
+        "run-tse-weekly": {
+            "task": "app.tasks.worker.run_collector_task",
+            "schedule": 604800,
+            "args": ("tse",),
+        },
     },
 )
 

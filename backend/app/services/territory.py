@@ -39,7 +39,7 @@ def list_cities(db: Session, state_id: int | None, query: str | None) -> list[Ci
         stmt = stmt.where(City.state_id == state_id)
     if query:
         stmt = stmt.where(City.name.ilike(f"%{query}%"))
-    return db.scalars(stmt.order_by(City.name).limit(100)).all()
+    return db.scalars(stmt.order_by(City.name)).all()
 
 
 def get_city_profile(db: Session, city_id: int) -> dict:
