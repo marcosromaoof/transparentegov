@@ -14,14 +14,14 @@ from app.collectors.common import (
     parse_date,
     upsert_politician,
 )
-from app.models import City, Contract, PublicAgency, PublicSpending
+from app.models import City, Contract, PublicAgency, PublicSpending, State
 
 
 class CamaraCollector:
     source_key = "camara"
 
     def run(self, db: Session) -> CollectorResult:
-        city = db.scalar(select(City).where(City.name == "Brasilia"))
+        city = self._resolve_brasilia_city(db)
         if not city:
             return CollectorResult(fetched=0, saved=0)
 
@@ -146,6 +146,23 @@ class CamaraCollector:
 
         db.commit()
         return CollectorResult(fetched=len(deputados) + len(data), saved=saved + politicians_saved)
+
+    def _resolve_brasilia_city(self, db: Session) -> City | None:
+        city = db.scalar(select(City).where(City.ibge_code == "5300108"))
+        if city:
+            return city
+
+        df_state = db.scalar(select(State).where(State.code == "DF"))
+        if not df_state:
+            return None
+
+        city = db.scalar(
+            select(City).where(
+                City.state_id == df_state.id,
+                City.name.in_(["Brasilia", "Brasília"]),
+            )
+        )
+        return city
 
     def _fetch_all_deputados(
         self,

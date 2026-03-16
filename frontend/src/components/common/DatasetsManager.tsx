@@ -1,9 +1,16 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import type { CollectorRun, DatasetSource } from "@/lib/types";
+
+function describeRun(run: CollectorRun) {
+  if (run.records_fetched > 0 && run.records_saved === 0) {
+    return `status=${run.status} · fetched=${run.records_fetched} · sem novos registros (deduplicado)`;
+  }
+  return `status=${run.status} · fetched=${run.records_fetched} · saved=${run.records_saved}`;
+}
 
 export function DatasetsManager() {
   const [datasets, setDatasets] = useState<DatasetSource[]>([]);
@@ -15,7 +22,7 @@ export function DatasetsManager() {
     try {
       const [datasetsResponse, runsResponse] = await Promise.all([
         api.get<DatasetSource[]>("admin/datasets"),
-        api.get<CollectorRun[]>("collectors/runs")
+        api.get<CollectorRun[]>("collectors/runs"),
       ]);
       setDatasets(datasetsResponse);
       setRuns(runsResponse);
@@ -42,7 +49,13 @@ export function DatasetsManager() {
   async function runCollector(sourceKey: string) {
     try {
       const run = await api.post<CollectorRun>(`collectors/run/${sourceKey}`);
-      setMessage(`Coletor ${sourceKey} executado: ${run.status} (${run.records_saved} salvos)`);
+      if (run.records_fetched > 0 && run.records_saved === 0) {
+        setMessage(
+          `Coletor ${sourceKey}: sucesso, ${run.records_fetched} lidos e 0 novos salvos (dados ja existentes).`,
+        );
+      } else {
+        setMessage(`Coletor ${sourceKey}: sucesso, fetched=${run.records_fetched}, saved=${run.records_saved}.`);
+      }
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -52,9 +65,9 @@ export function DatasetsManager() {
   return (
     <div>
       <section className="panel">
-        <h2 style={{ margin: 0, fontFamily: "var(--font-space)" }}>Datasets e Coleta Automática</h2>
+        <h2 style={{ margin: 0, fontFamily: "var(--font-space)" }}>Datasets e Coleta Automatizada</h2>
         <p className="section-subtitle">
-          Gestão de fontes oficiais, frequência de coleta, execução manual e monitoramento de ingestão.
+          Gestao de fontes oficiais, frequencia de coleta, execucao manual e monitoramento de ingestao.
         </p>
       </section>
 
@@ -67,7 +80,7 @@ export function DatasetsManager() {
             <h3 className="section-title">{dataset.name}</h3>
             <p className="section-subtitle">{dataset.endpoint_url}</p>
             <p className="muted" style={{ marginTop: 8 }}>
-              Frequência: {dataset.frequency} · Status: {dataset.enabled ? "ativo" : "inativo"}
+              Frequencia: {dataset.frequency} · Status: {dataset.enabled ? "ativo" : "inativo"}
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
               <button className="btn secondary" onClick={() => toggleDataset(dataset)}>
@@ -82,15 +95,19 @@ export function DatasetsManager() {
       </section>
 
       <section className="panel" style={{ marginTop: 16 }}>
-        <h3 className="section-title">Últimas Execuções de Coletores</h3>
+        <h3 className="section-title">Ultimas execucoes de coletores</h3>
         <div className="card-list" style={{ marginTop: 8 }}>
           {runs.map((run) => (
             <article className="card-item" key={run.id}>
               <strong>Run #{run.id}</strong>
               <p className="muted" style={{ margin: "6px 0 0" }}>
-                status={run.status} · fetched={run.records_fetched} · saved={run.records_saved}
+                {describeRun(run)}
               </p>
-              {run.error_message ? <p className="error" style={{ marginTop: 8 }}>{run.error_message}</p> : null}
+              {run.error_message ? (
+                <p className="error" style={{ marginTop: 8 }}>
+                  {run.error_message}
+                </p>
+              ) : null}
             </article>
           ))}
         </div>
@@ -98,4 +115,3 @@ export function DatasetsManager() {
     </div>
   );
 }
-
