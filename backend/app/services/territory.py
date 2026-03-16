@@ -67,7 +67,9 @@ def get_city_profile(db: Session, city_id: int) -> dict:
     schools = db.scalars(select(School).where(School.city_id == city_id)).all()
     police_units = db.scalars(select(PoliceUnit).where(PoliceUnit.city_id == city_id)).all()
     politicians = db.scalars(
-        select(Politician).where((Politician.city_id == city_id) | (Politician.state_id == state.id))
+        select(Politician)
+        .where(Politician.city_id == city_id)
+        .order_by(Politician.position.asc(), Politician.name.asc())
     ).all()
 
     agency_ids = [a.id for a in agencies]

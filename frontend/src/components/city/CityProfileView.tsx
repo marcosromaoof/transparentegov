@@ -60,18 +60,18 @@ export function CityProfileView({ cityId }: { cityId: number }) {
   }
 
   if (error || !profile) {
-    return <div className="panel error">{error || "Perfil não encontrado"}</div>;
+    return <div className="panel error">{error || "Perfil nao encontrado"}</div>;
   }
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
       <section className="panel">
-        <p className="brand-kicker">Território Investigado</p>
+        <p className="brand-kicker">Territorio Investigado</p>
         <h2 style={{ margin: "6px 0 8px", fontFamily: "var(--font-space)", fontSize: "1.9rem" }}>
           {profile.city.name} · {profile.state.code} · {profile.country.code}
         </h2>
         <p className="section-subtitle">
-          Estrutura pública territorial com foco investigativo em gastos, contratos, órgãos e relações.
+          Estrutura publica territorial com foco investigativo em gastos, contratos, orgaos e relacoes.
         </p>
 
         <div className="grid-3" style={{ marginTop: 14 }}>
@@ -82,17 +82,17 @@ export function CityProfileView({ cityId }: { cityId: number }) {
             </article>
           ))}
           <article className="metric">
-            <p className="muted">Órgãos públicos</p>
+            <p className="muted">Orgaos publicos</p>
             <strong>{profile.public_agencies.length}</strong>
           </article>
           <article className="metric">
-            <p className="muted">Hospitais / Escolas / Polícia</p>
+            <p className="muted">Hospitais / Escolas / Policia</p>
             <strong>
               {profile.hospitals.length} / {profile.schools.length} / {profile.police_units.length}
             </strong>
           </article>
           <article className="metric">
-            <p className="muted">Políticos relacionados</p>
+            <p className="muted">Politicos do municipio</p>
             <strong>{profile.politicians.length}</strong>
           </article>
         </div>
@@ -102,8 +102,9 @@ export function CityProfileView({ cityId }: { cityId: number }) {
         <section className="panel warn" style={{ marginTop: 16 }}>
           <h3 className="section-title">Dados territoriais ainda em coleta</h3>
           <p className="section-subtitle">
-            A cidade selecionada ainda nao possui contratos/gastos/receitas suficientes no banco.
-            Use a aba Datasets para sincronizar IBGE, TSE, Camara, Senado e demais fontes.
+            A cidade selecionada ainda nao possui cobertura financeira municipal suficiente no banco.
+            Hoje a cobertura real depende principalmente de PNCP, Portal da Transparencia
+            e das bases territoriais ja sincronizadas.
           </p>
         </section>
       ) : null}
@@ -111,7 +112,7 @@ export function CityProfileView({ cityId }: { cityId: number }) {
       <section className="panel" style={{ marginTop: 16 }}>
         <h3 className="section-title">Mapa Territorial</h3>
         <p className="section-subtitle" style={{ marginBottom: 12 }}>
-          Localização geográfica da cidade e ponto central da investigação.
+          Localizacao geografica da cidade e ponto central da investigacao.
         </p>
         <CityMap latitude={profile.city.latitude} longitude={profile.city.longitude} name={profile.city.name} />
       </section>
@@ -126,4 +127,3 @@ export function CityProfileView({ cityId }: { cityId: number }) {
     </motion.div>
   );
 }
-
